@@ -31,8 +31,8 @@
 * 🇬🇧 **📦 Stock & Material Tracking:** Manage your filament/resin inventory, with automatic stock deduction upon project completion.
 * 🇹🇷 **📦 Stok ve Malzeme Takibi:** Filament/reçine envanterinizi yönetin, projeler tamamlandıkça stoktan otomatik düşün.
 
-* 🇬🇧 **⚙️ Simple Production Planning (MES-Lite):** Queue approved jobs and visually plan them with `FullCalendar.js`.
-* 🇹🇷 **⚙️ Basit Üretim Planlaması (MES-Lite):** Onaylanan işleri bir sıraya alın ve `FullCalendar.js` ile görsel olarak planlayın.
+* 🇬🇧 **⚙️ Simple Production Planning (MES-Lite):** Put approved jobs in a queue and view them either as a list or as a calendar.
+* 🇹🇷 **⚙️ Basit Üretim Planlaması (MES-Lite):** Onaylanan işleri bir sıraya alın, ister liste isterseniz de takvim olarak görüntüleyin.
 
 * 🇬🇧 **📊 Reporting & Analytics:** Get simple reports on profitability, material usage, and machine performance.
 * 🇹🇷 **📊 Raporlama ve Analitik:** Karlılık, malzeme kullanımı ve makine performansı üzerine basit raporlar alın.
