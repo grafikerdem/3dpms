@@ -23,10 +23,7 @@ Profesyonel 3D baskı stüdyoları ve küçük üretim atölyeleri için tasarla
 * **🚀 Hızlı Kurulum Sihirbazı:** Birkaç adımda sistemi çalışır hale getirin.
 
 ## 📸 Ekran Görüntüleri (Screenshots)
-
-*(Buraya uygulamanızın dashboard, proje sayfası veya ayarlar gibi güzel görünen ekran görüntülerini ekleyin. Örn: `![Dashboard](link/to/dashboard.png)`)*
-
-![3DPMS Dashboard Görüntüsü](link/to/screenshot.png)
+![3DPMS Dashboard Görüntüsü](https://github.com/user-attachments/assets/1fc9d76c-bf04-4bd1-8d13-bd79493a177b)
 
 ## 🛠️ Teknoloji Yığını
 
@@ -41,7 +38,7 @@ Bu sistemi yerel veya paylaşımlı bir sunucuya kurmak çok basittir.
 
 1.  **Repo'yu Klonlayın/İndirin:**
     ```bash
-    git clone [https://github.com/kullanici-adiniz/3dpms.git](https://github.com/kullanici-adiniz/3dpms.git)
+    git clone [https://github.com/grafikerdem/3dpms.git](https://github.com/grafikerdem/3dpms.git)
     cd 3dpms
     ```
 
