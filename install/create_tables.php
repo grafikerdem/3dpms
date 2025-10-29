@@ -24,20 +24,35 @@ $admin_pass = $_POST['admin_pass'];
 // --- Step 1: Create database.php config file ---
 echo "<h5>Adım 1: `database.php` dosyası oluşturuluyor...</h5>";
 
-$config_content = '<?php' . "\n" . 
-'// Veritabanı bağlantı bilgileri' . "\n" . 
-"define('DB_HOST', '" . $db_host . "');" . "\n" . 
-"define('DB_NAME', '" . $db_name . "');" . "\n" . 
-"define('DB_USER', '" . $db_user . "');" . "\n" . 
-"define('DB_PASS', '" . $db_pass . "');" . "\n\n" . 
-'// PDO ile veritabanı bağlantısı' . "\n" . 
-'try {' . "\n" . 
-'    $pdo = new PDO("mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4", DB_USER, DB_PASS);' . "\n" . 
-'    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);' . "\n" . 
-'} catch (PDOException $e) {' . "\n" . 
-'    die("Veritabanı bağlantısı kurulamadı: " . $e->getMessage());' . "\n" . 
-'}' . "\n" . 
-'?>';
+// Veritabanı dosyası içeriğini oluştur
+$db_host_escaped = addslashes($db_host);
+$db_name_escaped = addslashes($db_name);
+$db_user_escaped = addslashes($db_user);
+$db_pass_escaped = addslashes($db_pass);
+
+// Sabit adlarını değişkene atayalım (parse edilmesin diye)
+$host_name = 'DB_HOST';
+$name_name = 'DB_NAME';
+$user_name = 'DB_USER';
+$pass_name = 'DB_PASS';
+
+$config_content = <<<EOT
+<?php
+// Veritabanı bağlantı bilgileri
+define('{$host_name}', '{$db_host_escaped}');
+define('{$name_name}', '{$db_name_escaped}');
+define('{$user_name}', '{$db_user_escaped}');
+define('{$pass_name}', '{$db_pass_escaped}');
+
+// PDO ile veritabanı bağlantısı
+try {
+    \$pdo = new PDO("mysql:host=" . {$host_name} . ";dbname=" . {$name_name} . ";charset=utf8mb4", {$user_name}, {$pass_name});
+    \$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException \$e) {
+    die("Veritabanı bağlantısı kurulamadı: " . \$e->getMessage());
+}
+?>
+EOT;
 
 if (file_put_contents('../includes/database.php', $config_content)) {
     echo '<div class="alert alert-success">✓ `database.php` başarıyla oluşturuldu.</div>';
@@ -113,7 +128,7 @@ CREATE TABLE `projects` (
   `id` int(11) NOT NULL AUTO_INCREMENT PRIMARY KEY,
   `project_number` varchar(50) NOT NULL UNIQUE,
   `customer_name` varchar(255) NOT NULL,
-  `status` varchar(50) NOT NULL DEFAULT \'Teklif\',
+  `status` varchar(50) NOT NULL DEFAULT 'Teklif',
   `notes` text,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -130,9 +145,18 @@ CREATE TABLE `project_parts` (
   `setup_time_minutes` int(11) DEFAULT 0,
   `postprocess_time_minutes` int(11) DEFAULT 0,
   `total_cost` decimal(10,2),
+  `production_status` varchar(50) DEFAULT 'Bekliyor',
+  `scheduled_printer_id` int(11) DEFAULT NULL,
+  `scheduled_start_time` datetime DEFAULT NULL,
+  `scheduled_end_time` datetime DEFAULT NULL,
+  `actual_start_time` datetime DEFAULT NULL,
+  `actual_end_time` datetime DEFAULT NULL,
+  `failure_reason` text DEFAULT NULL,
+  `qc_status` varchar(50) DEFAULT NULL,
   FOREIGN KEY (`project_id`) REFERENCES `projects`(`id`) ON DELETE CASCADE,
   FOREIGN KEY (`printer_id`) REFERENCES `printers`(`id`),
-  FOREIGN KEY (`material_id`) REFERENCES `materials`(`id`)
+  FOREIGN KEY (`material_id`) REFERENCES `materials`(`id`),
+  FOREIGN KEY (`scheduled_printer_id`) REFERENCES `printers`(`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE `maintenance_log` (

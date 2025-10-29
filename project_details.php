@@ -41,6 +41,15 @@ foreach ($parts as $part) {
 }
 $total_quote = $subtotal * (1 + ($markup / 100));
 
+// Duruma göre renk belirle
+$status_color = 'light';
+if ($project['status'] == 'Teklif') $status_color = 'secondary';
+elseif ($project['status'] == 'Onaylandı') $status_color = 'info';
+elseif ($project['status'] == 'Üretimde') $status_color = 'primary';
+elseif ($project['status'] == 'Kalite Kontrol') $status_color = 'warning';
+elseif ($project['status'] == 'Tamamlandı') $status_color = 'success';
+elseif ($project['status'] == 'İptal Edildi') $status_color = 'danger';
+
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -48,8 +57,49 @@ $total_quote = $subtotal * (1 + ($markup / 100));
         <h1 class="mb-0"><?php echo htmlspecialchars($project['project_number']); ?></h1>
         <p class="text-muted mb-0">Müşteri: <?php echo htmlspecialchars($project['customer_name']); ?></p>
     </div>
-    <div>
-        <a href="generate_pdf.php?id=<?php echo $project['id']; ?>" class="btn btn-success" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF Olarak Aktar</a>
+    <div class="d-flex gap-2">
+        <span class="badge bg-<?php echo $status_color; ?> fs-6"><?php echo htmlspecialchars($project['status']); ?></span>
+        <?php if ($project['status'] == 'Teklif' && !empty($parts)): ?>
+            <form method="POST" action="projects.php?action=edit&id=<?php echo $project['id']; ?>" style="display:inline;">
+                <input type="hidden" name="id" value="<?php echo $project['id']; ?>">
+                <input type="hidden" name="customer_name" value="<?php echo htmlspecialchars($project['customer_name']); ?>">
+                <input type="hidden" name="status" value="Onaylandı">
+                <input type="hidden" name="notes" value="<?php echo htmlspecialchars($project['notes'] ?? ''); ?>">
+                <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Onayla ve Üretime Geç</button>
+            </form>
+        <?php elseif ($project['status'] == 'Üretimde'): ?>
+            <form method="POST" action="projects.php?action=edit&id=<?php echo $project['id']; ?>" style="display:inline;">
+                <input type="hidden" name="id" value="<?php echo $project['id']; ?>">
+                <input type="hidden" name="customer_name" value="<?php echo htmlspecialchars($project['customer_name']); ?>">
+                <input type="hidden" name="status" value="Kalite Kontrol">
+                <input type="hidden" name="notes" value="<?php echo htmlspecialchars($project['notes'] ?? ''); ?>">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-clipboard-check"></i> Kalite Kontrol'e Gönder</button>
+            </form>
+            <form method="POST" action="projects.php?action=edit&id=<?php echo $project['id']; ?>" style="display:inline;">
+                <input type="hidden" name="id" value="<?php echo $project['id']; ?>">
+                <input type="hidden" name="customer_name" value="<?php echo htmlspecialchars($project['customer_name']); ?>">
+                <input type="hidden" name="status" value="Tamamlandı">
+                <input type="hidden" name="notes" value="<?php echo htmlspecialchars($project['notes'] ?? ''); ?>">
+                <button type="submit" class="btn btn-success"><i class="bi bi-check-all"></i> Tamamla</button>
+            </form>
+        <?php elseif ($project['status'] == 'Kalite Kontrol'): ?>
+            <form method="POST" action="projects.php?action=edit&id=<?php echo $project['id']; ?>" style="display:inline;">
+                <input type="hidden" name="id" value="<?php echo $project['id']; ?>">
+                <input type="hidden" name="customer_name" value="<?php echo htmlspecialchars($project['customer_name']); ?>">
+                <input type="hidden" name="status" value="Tamamlandı">
+                <input type="hidden" name="notes" value="<?php echo htmlspecialchars($project['notes'] ?? ''); ?>">
+                <button type="submit" class="btn btn-success"><i class="bi bi-check-all"></i> Tamamlandı Olarak İşaretle</button>
+            </form>
+        <?php elseif ($project['status'] == 'Onaylandı'): ?>
+            <form method="POST" action="projects.php?action=edit&id=<?php echo $project['id']; ?>" style="display:inline;">
+                <input type="hidden" name="id" value="<?php echo $project['id']; ?>">
+                <input type="hidden" name="customer_name" value="<?php echo htmlspecialchars($project['customer_name']); ?>">
+                <input type="hidden" name="status" value="Üretimde">
+                <input type="hidden" name="notes" value="<?php echo htmlspecialchars($project['notes'] ?? ''); ?>">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-gear"></i> Üretime Başla</button>
+            </form>
+        <?php endif; ?>
+        <a href="generate_pdf.php?id=<?php echo $project['id']; ?>" class="btn btn-outline-primary" target="_blank"><i class="bi bi-printer"></i> Yazdır/PDF</a>
         <a href="projects.php" class="btn btn-secondary">Geri Dön</a>
     </div>
 </div>

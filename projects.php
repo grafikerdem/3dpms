@@ -16,6 +16,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($id) { // Güncelleme
         $stmt = $pdo->prepare("UPDATE projects SET customer_name=?, status=?, notes=? WHERE id=?");
         $stmt->execute([$customer_name, $status, $notes, $id]);
+        
+        // Proje durumuna göre parça durumlarını güncelle
+        $part_status = 'Bekliyor'; // Varsayılan
+        if ($status == 'Teklif') $part_status = 'Bekliyor';
+        elseif ($status == 'Onaylandı') $part_status = 'Bekliyor';
+        elseif ($status == 'Üretimde') $part_status = 'Baskıda';
+        elseif ($status == 'Kalite Kontrol') $part_status = 'Bitti';
+        elseif ($status == 'Tamamlandı') $part_status = 'Bitti';
+        elseif ($status == 'İptal Edildi') $part_status = 'Başarısız';
+        
+        // Parça durumlarını güncelle
+        $update_parts = $pdo->prepare("UPDATE project_parts SET production_status = ? WHERE project_id = ?");
+        $update_parts->execute([$part_status, $id]);
+        
+        // Debug: Kaç parça güncellendi
+        $affected_rows = $update_parts->rowCount();
+        
+        // Toast bildirimi için redirect
+        $toast_message = "Proje durumu '{$status}' olarak güncellendi. {$affected_rows} parça etkilendi.";
+        $toast_type = ($status == 'Tamamlandı') ? 'success' : 'info';
+        header("Location: projects.php?toast=" . urlencode($toast_message) . "&toast_type={$toast_type}");
+        exit;
     } else { // Ekleme
         // Otomatik Proje Numarası Oluştur: PROJE-YIL-SIRA
         $year = date('Y');
@@ -26,9 +48,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt = $pdo->prepare("INSERT INTO projects (project_number, customer_name, status, notes) VALUES (?, ?, ?, ?)");
         $stmt->execute([$project_number, $customer_name, $status, $notes]);
+        
+        // Toast bildirimi için redirect
+        $toast_message = "Yeni proje '{$project_number}' başarıyla oluşturuldu.";
+        header("Location: projects.php?toast=" . urlencode($toast_message) . "&toast_type=success");
+        exit;
     }
-    header('Location: projects.php');
-    exit;
 }
 
 // Silme işlemini yap
@@ -36,7 +61,10 @@ if ($action === 'delete' && $id) {
     // İlişkili parçaları da silmek için transaction kullanılabilir, şimdilik sadece projeyi siliyoruz.
     $stmt = $pdo->prepare("DELETE FROM projects WHERE id = ?");
     $stmt->execute([$id]);
-    header('Location: projects.php');
+    
+    // Toast bildirimi için redirect
+    $toast_message = "Proje başarıyla silindi.";
+    header("Location: projects.php?toast=" . urlencode($toast_message) . "&toast_type=success");
     exit;
 }
 

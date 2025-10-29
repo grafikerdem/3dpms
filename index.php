@@ -3,11 +3,11 @@ $page_title = 'Dashboard';
 require_once 'includes/header.php';
 
 // Dashboard kartları için verileri çek
-$active_jobs = $pdo->query("SELECT COUNT(*) FROM project_parts WHERE production_status = 'Baskıda'")->fetchColumn();
+$active_jobs = $pdo->query("SELECT COUNT(*) FROM project_parts WHERE production_status IN ('Baskıda', 'Bekliyor')")->fetchColumn();
 $low_stock_materials = $pdo->query("SELECT COUNT(*) FROM materials WHERE stock_amount <= low_stock_threshold")->fetchColumn();
 $waiting_approval = $pdo->query("SELECT COUNT(*) FROM projects WHERE status = 'Teklif'")->fetchColumn();
 
-// Yazıcı kullanım oranı için veri çek
+// Yazıcı kullanım oranı için veri çek  
 $printer_utilization_stmt = $pdo->query("SELECT p.name, COUNT(pp.id) as job_count FROM printers p LEFT JOIN project_parts pp ON p.id = pp.scheduled_printer_id GROUP BY p.id");
 $printer_data = $printer_utilization_stmt->fetchAll(PDO::FETCH_ASSOC);
 $printer_labels = json_encode(array_column($printer_data, 'name'));

@@ -14,6 +14,11 @@ check_login(); // Bu başlığı içeren tüm sayfaları koru
 </head>
 <body>
 
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 1055;">
+    <!-- Toast'lar buraya dinamik olarak eklenecek -->
+</div>
+
 <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top">
     <div class="container-fluid">
         <a class="navbar-brand" href="index.php">3D Print Studio</a>

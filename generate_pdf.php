@@ -1,30 +1,21 @@
 <?php
-require_once 'includes/auth.php';
-check_login();
-
-// --- ÖNEMLİ ---
-// Bu script, Dompdf kütüphanesini gerektirir.
-// Lütfen Composer ile kurun: `composer require dompdf/dompdf`
-if (!file_exists(__DIR__ . '/vendor/autoload.php')) {
-    die("Hata: Dompdf kütüphanesi bulunamadı. Lütfen proje ana dizininde 'composer require dompdf/dompdf' komutunu çalıştırın.");
-}
-require_once 'vendor/autoload.php';
-
-use Dompdf\Dompdf;
-use Dompdf\Options;
-
 $id = $_GET['id'] ?? 0;
 if (!$id) {
     header('Location: projects.php');
     exit;
 }
 
-// Veritabanından tüm proje verilerini çek
+// Veritabanı bağlantısı
+require_once 'includes/database.php';
+
+// Proje bilgilerini al
 $stmt = $pdo->prepare("SELECT * FROM projects WHERE id = ?");
 $stmt->execute([$id]);
 $project = $stmt->fetch(PDO::FETCH_ASSOC);
 
-if (!$project) { die("Proje bulunamadı."); }
+if (!$project) {
+    die("Proje bulunamadı.");
+}
 
 $parts_stmt = $pdo->prepare("SELECT pp.*, p.name as printer_name, m.brand as material_brand, m.type as material_type FROM project_parts pp JOIN printers p ON pp.printer_id = p.id JOIN materials m ON pp.material_id = m.id WHERE pp.project_id = ? ORDER BY pp.id ASC");
 $parts_stmt->execute([$id]);
@@ -38,48 +29,202 @@ $markup = $settings['markup'] ?? 0;
 $subtotal = array_sum(array_column($parts, 'total_cost'));
 $markup_amount = $subtotal * ($markup / 100);
 $total_quote = $subtotal + $markup_amount;
-
-// --- PDF için HTML oluşturmaya başla ---
-$html = '<!DOCTYPE html><html lang="tr"><head><meta charset="UTF-8"><title>Teklif - ' . $project['project_number'] . '</title><style>' .
-'body { font-family: \'DejaVu Sans\', sans-serif; font-size: 12px; color: #333; }' .
-'.container { width: 100%; margin: 0 auto; }' .
-'h1 { color: #000; }' .
-'.header, .footer { text-align: center; }' .
-'.details table, .parts-table, .summary table { width: 100%; border-collapse: collapse; }' .
-'.details td { padding: 10px; vertical-align: top; }' .
-'.parts-table th, .parts-table td { border: 1px solid #ccc; padding: 8px; }' .
-'.parts-table th { background-color: #f2f2f2; }' .
-'.summary { float: right; width: 45%; margin-top: 20px; }' .
-'.summary th, .summary td { padding: 8px; } .summary th { text-align: right; } .summary .total { font-weight: bold; font-size: 1.3em; border-top: 2px solid #000; } ' .
-'</style></head><body><div class="container">' .
-'<div class="header"><h1>TEKLİF</h1><p><strong>Proje No:</strong> ' . $project['project_number'] . '<br><strong>Tarih:</strong> ' . date('d.m.Y') . '</p></div>' .
-'<div class="details"><table><tr><td style="width:50%;"><strong>Teklifi Veren:</strong><br>3D Print Studio<br>Stüdyo Adresi<br>Vergi No: 1234567890</td><td style="width:50%;"><strong>Müşteri:</strong><br>' . htmlspecialchars($project['customer_name']) . '</td></tr></table></div>' .
-'<table class="parts-table"><thead><tr><th>#</th><th>Parça Adı</th><th>Açıklama</th><th style="text-align:right;">Tutar</th></tr></thead><tbody>';
-
-$part_counter = 1;
-foreach ($parts as $part) {
-    $html .= '<tr><td>' . $part_counter++ . '</td><td>' . htmlspecialchars($part['part_name']) . '</td><td>Baskı: ' . htmlspecialchars($part['printer_name']) . ' | Malzeme: ' . htmlspecialchars($part['material_brand'] . ' ' . $part['material_type']) . '</td><td style="text-align:right;">' . number_format($part['total_cost'], 2) . ' ' . $currency . '</td></tr>';
-}
-
-$html .= '</tbody></table>' .
-'<div class="summary"><table>' .
-'<tr><th>Ara Toplam:</th><td style="text-align:right;">' . number_format($subtotal, 2) . ' ' . $currency . '</td></tr>' .
-'<tr><th>Kar Marjı (%' . $markup . '):</th><td style="text-align:right;">' . number_format($markup_amount, 2) . ' ' . $currency . '</td></tr>' .
-'<tr class="total"><th>GENEL TOPLAM:</th><td style="text-align:right;">' . number_format($total_quote, 2) . ' ' . $currency . '</td></tr>' .
-'</table></div></div></body></html>';
-// --- HTML sonu ---
-
-$options = new Options();
-$options->set('isHtml5ParserEnabled', true);
-$options->set('isRemoteEnabled', true);
-$options->set('defaultFont', 'DejaVu Sans'); // Türkçe karakterler için önemli
-
-$dompdf = new Dompdf($options);
-$dompdf->loadHtml($html);
-$dompdf->setPaper('A4', 'portrait');
-$dompdf->render();
-
-// PDF'i tarayıcıda göster
-$filename = "Teklif_" . $project['project_number'] . ".pdf";
-$dompdf->stream($filename, ['Attachment' => 0]);
 ?>
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teklif - <?php echo htmlspecialchars($project['project_number']); ?></title>
+    <style>
+        @media print {
+            .no-print { display: none; }
+            body { margin: 0; }
+        }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            color: #333;
+        }
+        .header {
+            text-align: center;
+            border-bottom: 3px solid #007bff;
+            padding-bottom: 20px;
+            margin-bottom: 30px;
+        }
+        .header h1 {
+            color: #007bff;
+            margin: 0;
+            font-size: 32px;
+        }
+        .header p {
+            margin: 10px 0;
+            font-size: 14px;
+        }
+        .company-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 15px;
+            background: #f8f9fa;
+        }
+        .company-info > div {
+            width: 48%;
+        }
+        .company-info strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #007bff;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 30px;
+        }
+        table th {
+            background-color: #007bff;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+        table tr:hover {
+            background-color: #f8f9fa;
+        }
+        .summary {
+            float: right;
+            width: 300px;
+            margin-top: 20px;
+        }
+        .summary table {
+            width: 100%;
+        }
+        .summary td {
+            text-align: right;
+            padding: 8px;
+        }
+        .summary .total {
+            font-weight: bold;
+            font-size: 18px;
+            border-top: 2px solid #007bff;
+            background-color: #e7f3ff;
+        }
+        .footer {
+            clear: both;
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 2px solid #ccc;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+        }
+        .btn-print {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .btn-print:hover {
+            background: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <button class="btn-print no-print" onclick="window.print()">🖨️ Yazdır / PDF Olarak Kaydet</button>
+
+    <div class="header">
+        <h1>TEKLİF</h1>
+        <p>
+            <strong>Proje No:</strong> <?php echo htmlspecialchars($project['project_number']); ?><br>
+            <strong>Tarih:</strong> <?php echo date('d.m.Y'); ?>
+        </p>
+    </div>
+
+    <div class="company-info">
+        <div>
+            <strong>Teklifi Veren:</strong>
+            <p>
+                3D Print Studio<br>
+                [Stüdyo Adresiniz]<br>
+                Tel: [Telefon]<br>
+                E-posta: [E-posta]
+            </p>
+        </div>
+        <div>
+            <strong>Müşteri:</strong>
+            <p><?php echo htmlspecialchars($project['customer_name']); ?></p>
+        </div>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th width="5%">#</th>
+                <th width="30%">Parça Adı</th>
+                <th width="40%">Açıklama</th>
+                <th width="25%" style="text-align:right;">Tutar</th>
+            </tr>
+        </thead>
+        <tbody>
+            <?php if (empty($parts)): ?>
+                <tr><td colspan="4" style="text-align:center;">Bu projeye henüz parça eklenmemiş.</td></tr>
+            <?php else: ?>
+                <?php $counter = 1; foreach ($parts as $part): ?>
+                <tr>
+                    <td><?php echo $counter++; ?></td>
+                    <td><?php echo htmlspecialchars($part['part_name']); ?></td>
+                    <td>
+                        Yazıcı: <?php echo htmlspecialchars($part['printer_name']); ?><br>
+                        Malzeme: <?php echo htmlspecialchars($part['material_brand'] . ' ' . $part['material_type']); ?><br>
+                        <small>Miktar: <?php echo $part['material_amount_grams']; ?>g | Süre: <?php echo $part['print_time_hours']; ?>h</small>
+                    </td>
+                    <td style="text-align:right;"><?php echo number_format($part['total_cost'], 2) . ' ' . $currency; ?></td>
+                </tr>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <table>
+            <tr>
+                <td>Ara Toplam:</td>
+                <td><?php echo number_format($subtotal, 2) . ' ' . $currency; ?></td>
+            </tr>
+            <tr>
+                <td>Kar Marjı (<?php echo $markup; ?>%):</td>
+                <td><?php echo number_format($markup_amount, 2) . ' ' . $currency; ?></td>
+            </tr>
+            <tr class="total">
+                <td>GENEL TOPLAM:</td>
+                <td><?php echo number_format($total_quote, 2) . ' ' . $currency; ?></td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        <p>
+            <strong>Not:</strong> <?php echo htmlspecialchars($project['notes'] ?? 'Bu teklif 30 gün süreyle geçerlidir.'); ?><br><br>
+            Bu teklif elektronik ortamda oluşturulmuştur ve yasal bir geçerliliği vardır.
+        </p>
+    </div>
+
+    <script>
+        // Yazdır butonuna tıklandığında tarayıcı yazdırma penceresini aç
+        document.querySelector('.btn-print').addEventListener('click', function() {
+            window.print();
+        });
+    </script>
+</body>
+</html>
