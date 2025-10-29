@@ -11,9 +11,9 @@
 
 🇹🇷 Profesyonel 3D baskı stüdyoları ve küçük üretim atölyeleri için tasarlanmış, hafif ve modüler bir web tabanlı yönetim sistemi.
 
-🇬🇧 3DPMS combines fast quoting, material tracking, and production planning into one simple interface. Developed with a philosophy of minimal setup and zero-dependency.
+🇬🇧 3DPMS combines fast quoting, material tracking, and production planning into one simple interface. Developed with a philosophy of minimal setup.
 
-🇹🇷 3DPMS; hızlı tekliflendirme, malzeme takibi ve üretim planlamasını tek bir basit arayüzde birleştirir. Minimum kurulum gereksinimi ve sıfır bağımlılık (zero-dependency) felsefesiyle geliştirilmiştir.
+🇹🇷 3DPMS; hızlı tekliflendirme, malzeme takibi ve üretim planlamasını tek bir basit arayüzde birleştirir. Minimum kurulum gereksinimi felsefesiyle geliştirilmiştir.
 
 ---
 
