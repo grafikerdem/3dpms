@@ -30,15 +30,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['assign_job'])) {
     exit;
 }
 
-// Henüz zamanlanmamış ve bekleyen parçaları al
+// Onaylanan, Üretimde ve Kalite Kontroldeki bekleyen parçaları al
 $stmt = $pdo->prepare(
     "SELECT pp.*, pr.project_number, pr.customer_name, pr.status as project_status
      FROM project_parts pp 
      JOIN projects pr ON pp.project_id = pr.id 
      WHERE pp.scheduled_start_time IS NULL 
      AND pp.production_status IN ('Bekliyor', 'Baskıda')
-     AND pr.status NOT IN ('Tamamlandı', 'İptal Edildi')
-     ORDER BY pr.created_at ASC"
+     AND pr.status IN ('Onaylandı', 'Üretimde', 'Kalite Kontrol')
+     ORDER BY 
+         CASE pr.status 
+             WHEN 'Onaylandı' THEN 1 
+             WHEN 'Üretimde' THEN 2 
+             WHEN 'Kalite Kontrol' THEN 3 
+         END,
+         pr.created_at ASC"
 );
 $stmt->execute();
 $waiting_jobs = $stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -64,6 +70,17 @@ $printers = $pdo->query("SELECT id, name FROM printers ORDER BY name ASC")->fetc
                                     <td><?php echo htmlspecialchars($job['customer_name']); ?></td>
                                     <td><?php echo htmlspecialchars($job['part_name']); ?></td>
                                     <td><?php echo htmlspecialchars($job['print_time_hours']); ?> saat</td>
+                                    <td>
+                                        <?php 
+                                        $status_badge = match($job['project_status']) {
+                                            'Onaylandı' => 'info',
+                                            'Üretimde' => 'primary',
+                                            'Kalite Kontrol' => 'warning',
+                                            default => 'secondary'
+                                        };
+                                        ?>
+                                        <span class="badge bg-<?php echo $status_badge; ?>"><?php echo htmlspecialchars($job['project_status']); ?></span>
+                                    </td>
                                     <td style="width: 300px;">
                                         <form method="POST" action="production.php" class="d-flex">
                                             <input type="hidden" name="part_id" value="<?php echo $job['id']; ?>">
@@ -277,15 +294,15 @@ function toggleView() {
     </div>
     <div class="card-body">
         <?php 
-        // Son 7 gün içinde tamamlanan işleri al
+        // Tamamlanan işleri al (sadece proje durumu bazlı)
         $completed_stmt = $pdo->prepare(
             "SELECT pp.*, pr.project_number, pr.customer_name, p.name as printer_name, pr.status as project_status
              FROM project_parts pp 
              JOIN projects pr ON pp.project_id = pr.id
              LEFT JOIN printers p ON pp.scheduled_printer_id = p.id
-             WHERE pp.production_status = 'Bitti'
-             AND pr.status IN ('Tamamlandı', 'Kalite Kontrol')
-             ORDER BY pr.created_at DESC"
+             WHERE pr.status = 'Tamamlandı'
+             ORDER BY pr.created_at DESC
+             LIMIT 50"
         );
         $completed_stmt->execute();
         $completed_jobs = $completed_stmt->fetchAll(PDO::FETCH_ASSOC);
@@ -323,10 +340,13 @@ function toggleView() {
                                     <?php endif; ?>
                                 </td>
                                 <td>
-                                    <?php if ($job['actual_end_time']): ?>
+                                    <?php 
+                                    // Projenin oluşturma tarihini göster (actual_end_time yoksa)
+                                    $display_date = $job['actual_end_time'] ?? $job['scheduled_end_time'];
+                                    if ($display_date): ?>
                                         <span class="text-success">
                                             <i class="bi bi-calendar-check me-1"></i>
-                                            <?php echo date('d.m.Y H:i', strtotime($job['actual_end_time'])); ?>
+                                            <?php echo date('d.m.Y', strtotime($display_date)); ?>
                                         </span>
                                     <?php else: ?>
                                         <span class="text-muted">-</span>
@@ -361,26 +381,26 @@ function toggleView() {
             <!-- Özet İstatistikler -->
             <div class="row mt-3">
                 <div class="col-md-4">
-                    <div class="card bg-light">
+                    <div class="card bg-success text-white">
                         <div class="card-body text-center">
-                            <h5 class="text-success"><?php echo count($completed_jobs); ?></h5>
-                            <small class="text-muted">Tamamlanan Parça</small>
+                            <h5 class="text-white"><?php echo count($completed_jobs); ?></h5>
+                            <small class="text-white-50">Tamamlanan Parça</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-light">
+                    <div class="card bg-primary text-white">
                         <div class="card-body text-center">
-                            <h5 class="text-primary"><?php echo count(array_unique(array_column($completed_jobs, 'project_id'))); ?></h5>
-                            <small class="text-muted">Etkilenen Proje</small>
+                            <h5 class="text-white"><?php echo count(array_unique(array_column($completed_jobs, 'project_id'))); ?></h5>
+                            <small class="text-white-50">Etkilenen Proje</small>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-light">
+                    <div class="card bg-info text-white">
                         <div class="card-body text-center">
-                            <h5 class="text-info"><?php echo count(array_unique(array_column(array_filter($completed_jobs, fn($j) => $j['printer_name']), 'printer_name'))); ?></h5>
-                            <small class="text-muted">Kullanılan Yazıcı</small>
+                            <h5 class="text-white"><?php echo count(array_unique(array_column(array_filter($completed_jobs, fn($j) => $j['printer_name']), 'printer_name'))); ?></h5>
+                            <small class="text-white-50">Kullanılan Yazıcı</small>
                         </div>
                     </div>
                 </div>
